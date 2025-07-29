@@ -3,7 +3,6 @@ import { Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-import NoteCard from "@/components/NoteCard";
 import AddNoteDialog from "@/components/AddNoteDialog";
 import EditNoteDialog from "@/components/EditNoteDialog";
 
@@ -120,3 +119,4 @@ const Home = () => {
 };
 
 export default Home;
+ 
