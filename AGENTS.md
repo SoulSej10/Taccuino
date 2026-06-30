@@ -1,7 +1,10 @@
 # Taccuino — Agent Guidelines
 
 ## Project Overview
-Taccuino is a lightweight note-taking app built with React 19, TypeScript, Vite 7, Tailwind CSS v4, and shadcn/ui (New York style).
+Taccuino is a modern note-taking application with a React frontend and Express/Prisma backend on Neon PostgreSQL.
+
+**Frontend:** React 19, TypeScript, Vite 7, Tailwind CSS v4, shadcn/ui (New York style), TipTap editor
+**Backend:** Express 5, Prisma ORM 6, Neon PostgreSQL
 
 ## Commit Convention
 All commits **must** follow [Conventional Commits](https://www.conventionalcommits.org/):
@@ -22,11 +25,6 @@ Format: `<type>: <short description>`
 - **No `any` types** — prefer `unknown` and narrow with type guards.
 - **No default exports** except for page components and entry points (`main.tsx`). Use named exports.
 - **No barrel files** (`index.ts` that re-export) — import directly from the file.
-- Format with Prettier before committing.
-
-## Pull Requests
-- Keep PRs focused on a single concern. If a PR does multiple things, split it.
-- PR title must match the commit convention format.
 
 ## Testing
 - Run `npm run build` before any commit to catch type errors and build failures.
@@ -36,18 +34,51 @@ Format: `<type>: <short description>`
 ## Project Structure
 ```
 src/
-  components/     # Reusable components
+  components/
     ui/           # shadcn/ui primitives (do not edit manually)
-  hooks/          # Custom React hooks
-  lib/            # Utility functions, helpers
-  pages/          # Page-level components (one per route)
+    common/       # Reusable: EmptyState, Skeleton, Toast, ConfirmDialog, LoadingScreen
+    layout/       # AppLayout, Sidebar, Header, Workspace, StatusBar
+    dashboard/    # Dashboard with widgets
+    editor/       # TipTap rich editor, toolbar, dialogs
+    notes/        # NoteList, NoteDetail
+    search/       # CommandPalette
+    settings/     # SettingsPage
+  lib/
+    api.ts        # API client (all backend calls)
+    utils.ts      # cn() utility
+  stores/
+    appStore.tsx  # Global state with React Context + useReducer
   types/          # Shared TypeScript types
-  App.tsx         # Root component
-  main.tsx        # Entry point
+  App.tsx
+  main.tsx
+server/
+  index.ts        # Express entry point (mounts routes, serves static)
+  prisma.ts       # Prisma client singleton
+  middleware/     # errorHandler, validate
+  routes/         # notes, notebooks, tags, settings, search
+  seed.ts         # Demo data seeder
+prisma/
+  schema.prisma   # Database schema (13 models)
+  migrations/     # Migration history
+```
+
+## Data Flow
+1. Components read state via `useAppState()` and call actions via `useAppActions()`
+2. Actions call the API client (`src/lib/api.ts`) which makes fetch requests to `/api/*`
+3. Vite proxies `/api` to the Express server at `localhost:3001`
+4. Express routes use Prisma to query Neon PostgreSQL
+5. On success, the local state is updated optimistically
+
+## Development
+```bash
+npm run dev         # Starts both frontend (5173) and API server (3001)
+npm run dev:client  # Frontend only
+npm run dev:server  # API server only
+npm run db:seed     # Seed demo data
 ```
 
 ## What Not To Do
 - Do not modify `src/components/ui/` — those are shadcn primitives managed by the framework.
 - Do not add new dependencies without asking the user first.
 - Do not add routing (react-router) unless explicitly requested.
-- Do not add a backend/server. Keep everything client-side and use `localStorage` for persistence.
+- Do not hardcode secrets — use environment variables via `.env`.
