@@ -184,3 +184,49 @@ button:focus-visible {
     @apply bg-background text-foreground;
   }
 }
+
+.markdown h1,
+.markdown h2,
+.markdown h3 {
+  @apply font-semibold text-neutral-900 dark:text-neutral-100;
+}
+
+.markdown h1 {
+  @apply text-lg;
+}
+
+.markdown h2 {
+  @apply text-base;
+}
+
+.markdown h3 {
+  @apply text-sm;
+}
+
+.markdown ul {
+  @apply list-disc list-inside space-y-1;
+}
+
+.markdown blockquote {
+  @apply border-l-2 border-neutral-300 dark:border-neutral-600 pl-3 italic text-neutral-500 dark:text-neutral-400;
+}
+
+.markdown code {
+  @apply rounded bg-neutral-100 dark:bg-neutral-800 px-1 py-0.5 text-xs font-mono text-neutral-800 dark:text-neutral-200;
+}
+
+.markdown a {
+  @apply text-blue-600 dark:text-blue-400 underline underline-offset-2 hover:text-blue-800 dark:hover:text-blue-300;
+}
+
+.markdown strong {
+  @apply font-semibold text-neutral-900 dark:text-neutral-100;
+}
+
+.markdown em {
+  @apply italic;
+}
+
+.markdown > p {
+  @apply mb-2 last:mb-0;
+}
