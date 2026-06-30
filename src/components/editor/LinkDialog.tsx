@@ -34,7 +34,13 @@ export function LinkDialog({ editor, open, onOpenChange }: LinkDialogProps) {
     if (!editor) return;
     const trimmed = url.trim();
     if (trimmed) {
-      editor.chain().focus().extendMarkRange("link").setLink({ href: trimmed }).run();
+      editor
+        .chain()
+        .focus()
+        .extendMarkRange("link")
+        .insertContent(text || trimmed)
+        .setLink({ href: trimmed })
+        .run();
     } else {
       editor.chain().focus().extendMarkRange("link").unsetLink().run();
     }

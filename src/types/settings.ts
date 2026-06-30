@@ -15,8 +15,6 @@ export type AppSettings = {
   autoSave: boolean;
   autoSaveInterval: number;
   spellCheck: boolean;
-  focusMode: boolean;
   showStatusBar: boolean;
-  showLineNumbers: boolean;
   defaultNotebookId: string | null;
 };

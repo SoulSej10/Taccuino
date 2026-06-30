@@ -13,13 +13,11 @@ const DEFAULT_SETTINGS: AppSettings = {
   autoSave: true,
   autoSaveInterval: 3000,
   spellCheck: true,
-  focusMode: false,
   showStatusBar: true,
-  showLineNumbers: false,
   defaultNotebookId: null,
 };
 
-export type ViewType = "dashboard" | "notes" | "notebook" | "notebook-notes" | "tags" | "tag-notes" | "favorites" | "recent" | "archive" | "trash" | "settings" | "search";
+export type ViewType = "dashboard" | "notes" | "notebook" | "notebook-notes" | "tags" | "tag-notes" | "favorites" | "recent" | "archive" | "trash" | "settings";
 
 type AppState = {
   notes: Note[];
@@ -31,9 +29,7 @@ type AppState = {
   activeNotebookId: string | null;
   activeTagId: string | null;
   sidebarOpen: boolean;
-  sidebarExpanded: boolean;
   commandPaletteOpen: boolean;
-  searchQuery: string;
   toasts: { id: string; message: string; type: "success" | "error" | "info" }[];
   loading: boolean;
   loaded: boolean;
@@ -61,9 +57,9 @@ type Action =
   | { type: "SET_SIDEBAR_OPEN"; open: boolean }
   | { type: "TOGGLE_COMMAND_PALETTE" }
   | { type: "SET_COMMAND_PALETTE_OPEN"; open: boolean }
-  | { type: "SET_SEARCH_QUERY"; query: string }
   | { type: "ADD_TOAST"; toast: { id: string; message: string; type: "success" | "error" | "info" } }
   | { type: "REMOVE_TOAST"; id: string }
+  | { type: "BULK_NOTE_ACTION"; ids: string[]; action: string }
   | { type: "SET_LOADING"; loading: boolean }
   | { type: "SET_LOADED"; loaded: boolean };
 
@@ -111,12 +107,19 @@ function appReducer(state: AppState, action: Action): AppState {
       return { ...state, commandPaletteOpen: !state.commandPaletteOpen };
     case "SET_COMMAND_PALETTE_OPEN":
       return { ...state, commandPaletteOpen: action.open };
-    case "SET_SEARCH_QUERY":
-      return { ...state, searchQuery: action.query };
     case "ADD_TOAST":
       return { ...state, toasts: [...state.toasts, action.toast] };
     case "REMOVE_TOAST":
       return { ...state, toasts: state.toasts.filter((t) => t.id !== action.id) };
+    case "BULK_NOTE_ACTION":
+      return {
+        ...state,
+        notes: state.notes.filter((n) => {
+          if (!action.ids.includes(n.id)) return true;
+          if (action.action === "delete") return false;
+          return true;
+        }),
+      };
     case "SET_LOADING":
       return { ...state, loading: action.loading };
     case "SET_LOADED":
@@ -137,9 +140,7 @@ function getInitialState(): AppState {
     activeNotebookId: null,
     activeTagId: null,
     sidebarOpen: true,
-    sidebarExpanded: true,
     commandPaletteOpen: false,
-    searchQuery: "",
     toasts: [],
     loading: false,
     loaded: false,
@@ -312,12 +313,13 @@ export function useAppActions() {
     async (ids: string[], action: string) => {
       try {
         await api.bulkNoteAction(ids, action);
+        dispatch({ type: "BULK_NOTE_ACTION", ids, action });
         addToast(`Notes ${action} successfully`, "success");
       } catch {
         addToast(`Failed to ${action} notes`, "error");
       }
     },
-    [addToast],
+    [dispatch, addToast],
   );
 
   const addNotebook = useCallback(

@@ -4,35 +4,7 @@ import { NoteList } from "@/components/notes/NoteList";
 import { NoteDetail } from "@/components/notes/NoteDetail";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import { SettingsPage } from "@/components/settings/SettingsPage";
-import { FileText, Search } from "lucide-react";
-
-function SearchResultsView() {
-  const { state } = useAppState();
-  const { notes, searchQuery } = state;
-
-  const filtered = notes.filter((n) => {
-    if (!searchQuery.trim()) return false;
-    const q = searchQuery.toLowerCase();
-    return (
-      n.title.toLowerCase().includes(q) ||
-      n.content.toLowerCase().includes(q) ||
-      n.tags.some((t) => t.toLowerCase().includes(q))
-    );
-  });
-
-  return (
-    <div className="animate-fade-in p-6">
-      <h1 className="text-xl font-bold mb-4">
-        {searchQuery ? `Results for "${searchQuery}"` : "Search"}
-      </h1>
-      {filtered.length === 0 ? (
-        <EmptyState icon={<Search className="size-12" />} title="No results found" description="Try a different search term" />
-      ) : (
-        <NoteList notes={filtered} />
-      )}
-    </div>
-  );
-}
+import { FileText } from "lucide-react";
 
 function NotesView() {
   const { state } = useAppState();
@@ -104,8 +76,6 @@ export function Workspace() {
   switch (activeView) {
     case "dashboard":
       return <Dashboard />;
-    case "search":
-      return <SearchResultsView />;
     case "settings":
       return <SettingsPage />;
     case "notes":

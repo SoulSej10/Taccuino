@@ -10,12 +10,23 @@ import { cn } from "@/lib/utils";
 
 export function AppLayout({ children }: { children?: ReactNode }) {
   const { state } = useAppState();
-  const { loadInitialData } = useAppActions();
+  const { loadInitialData, toggleCommandPalette } = useAppActions();
   const { settings } = state;
 
   useEffect(() => {
     loadInitialData();
   }, [loadInitialData]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        toggleCommandPalette();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [toggleCommandPalette]);
 
   if (!state.loaded) {
     return <LoadingScreen />;

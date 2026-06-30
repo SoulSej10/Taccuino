@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { File, Pin, PinOff, Star, Notebook, Clock, MoreHorizontal, Trash2, Copy, Archive, StarOff, Pencil } from "lucide-react";
+import { File, Pin, PinOff, Star, Notebook, Clock, MoreHorizontal, Trash2, Copy, Archive, StarOff, Pencil, RotateCcw, XCircle } from "lucide-react";
 import { useAppState, useAppActions } from "@/stores/appStore";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -80,10 +80,16 @@ export function NoteList(props: {
           actions.openNote(note.id);
           break;
         case "delete":
-          actions.updateNote(note.id, { status: "trashed", trashedAt: Date.now() });
+          actions.deleteNote(note.id);
           break;
         case "archive":
-          actions.updateNote(note.id, { status: "archived", archivedAt: Date.now() });
+          actions.archiveNote(note.id);
+          break;
+        case "restore":
+          actions.restoreNote(note.id);
+          break;
+        case "delete-permanent":
+          actions.deleteNote(note.id);
           break;
         case "pin":
           actions.togglePin(note.id);
@@ -196,22 +202,32 @@ export function NoteList(props: {
           style={{ left: contextMenu.x, top: contextMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
-          <ContextMenuItem icon={<Pencil className="size-3.5" />} label="Edit" onClick={() => handleAction("open", contextMenu.note)} />
-          <ContextMenuItem icon={<Copy className="size-3.5" />} label="Duplicate" onClick={() => handleAction("duplicate", contextMenu.note)} />
-          <div className="my-1 border-t border-border" />
-          {contextMenu.note.pinned ? (
-            <ContextMenuItem icon={<PinOff className="size-3.5" />} label="PinOff" onClick={() => handleAction("pin", contextMenu.note)} />
+          {contextMenu.note.status === "trashed" ? (
+            <>
+              <ContextMenuItem icon={<RotateCcw className="size-3.5" />} label="Restore" onClick={() => handleAction("restore", contextMenu.note)} />
+              <div className="my-1 border-t border-border" />
+              <ContextMenuItem icon={<XCircle className="size-3.5" />} label="Delete permanently" onClick={() => handleAction("delete-permanent", contextMenu.note)} className="text-destructive" />
+            </>
           ) : (
-            <ContextMenuItem icon={<Pin className="size-3.5" />} label="Pin" onClick={() => handleAction("pin", contextMenu.note)} />
+            <>
+              <ContextMenuItem icon={<Pencil className="size-3.5" />} label="Edit" onClick={() => handleAction("open", contextMenu.note)} />
+              <ContextMenuItem icon={<Copy className="size-3.5" />} label="Duplicate" onClick={() => handleAction("duplicate", contextMenu.note)} />
+              <div className="my-1 border-t border-border" />
+              {contextMenu.note.pinned ? (
+                <ContextMenuItem icon={<PinOff className="size-3.5" />} label="Unpin" onClick={() => handleAction("pin", contextMenu.note)} />
+              ) : (
+                <ContextMenuItem icon={<Pin className="size-3.5" />} label="Pin" onClick={() => handleAction("pin", contextMenu.note)} />
+              )}
+              {contextMenu.note.favorite ? (
+                <ContextMenuItem icon={<StarOff className="size-3.5" />} label="Unfavorite" onClick={() => handleAction("favorite", contextMenu.note)} />
+              ) : (
+                <ContextMenuItem icon={<Star className="size-3.5" />} label="Favorite" onClick={() => handleAction("favorite", contextMenu.note)} />
+              )}
+              <ContextMenuItem icon={<Archive className="size-3.5" />} label="Archive" onClick={() => handleAction("archive", contextMenu.note)} />
+              <div className="my-1 border-t border-border" />
+              <ContextMenuItem icon={<Trash2 className="size-3.5" />} label="Move to Trash" onClick={() => handleAction("delete", contextMenu.note)} className="text-destructive" />
+            </>
           )}
-          {contextMenu.note.favorite ? (
-            <ContextMenuItem icon={<StarOff className="size-3.5" />} label="Unfavorite" onClick={() => handleAction("favorite", contextMenu.note)} />
-          ) : (
-            <ContextMenuItem icon={<Star className="size-3.5" />} label="Favorite" onClick={() => handleAction("favorite", contextMenu.note)} />
-          )}
-          <ContextMenuItem icon={<Archive className="size-3.5" />} label="Archive" onClick={() => handleAction("archive", contextMenu.note)} />
-          <div className="my-1 border-t border-border" />
-          <ContextMenuItem icon={<Trash2 className="size-3.5" />} label="Move to Trash" onClick={() => handleAction("delete", contextMenu.note)} className="text-destructive" />
         </div>
       )}
     </div>

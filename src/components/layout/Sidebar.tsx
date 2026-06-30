@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { view: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard },
+  { view: "notes" as const, label: "All Notes", icon: NotebookPen },
   { view: "recent" as const, label: "Recent", icon: Clock },
   { view: "favorites" as const, label: "Favorites", icon: Star },
 ] as const;

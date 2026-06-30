@@ -4,8 +4,7 @@ import { useAppState, useAppActions } from "@/stores/appStore";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-
+import { RichEditor } from "@/components/editor/RichEditor";
 
 function wordCount(text: string): number {
   const clean = text.replace(/<[^>]*>/g, " ");
@@ -30,7 +29,7 @@ function formatDate(timestamp: number): string {
 export function NoteDetail() {
   const { state } = useAppState();
   const actions = useAppActions();
-  const { activeNoteId, notes, notebooks } = state;
+  const { activeNoteId, notes, notebooks, settings } = state;
 
   const note = useMemo(() => notes.find((n) => n.id === activeNoteId), [notes, activeNoteId]);
 
@@ -39,7 +38,6 @@ export function NoteDetail() {
   const [tagInput, setTagInput] = useState("");
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving">("saved");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [useRichEditor, setUseRichEditor] = useState(false);
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contentTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -48,17 +46,12 @@ export function NoteDetail() {
   const notebook = note ? notebooks.find((nb) => nb.id === note.notebookId) : null;
 
   useEffect(() => {
-    import("@/components/editor/RichEditor").then(() => setUseRichEditor(true)).catch(() => {});
-  }, []);
-
-  useEffect(() => {
     if (note) {
       setTitle(note.title);
       setContent(note.content);
       setSaveStatus("saved");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [note?.id]);
+  }, [note?.id, note?.title, note?.content]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -76,18 +69,25 @@ export function NoteDetail() {
     saveTimeoutRef.current = setTimeout(() => setSaveStatus("saved"), 400);
   }, []);
 
-  const handleTitleChange = useCallback(
-    (value: string) => {
-      setTitle(value);
+  const saveNote = useCallback(
+    (updates: Record<string, unknown>) => {
       if (!note) return;
       setSaveStatus("saving");
       clearTimeout(contentTimeoutRef.current ?? undefined);
       contentTimeoutRef.current = setTimeout(() => {
-        actions.updateNote(note.id, { title: value, updatedAt: Date.now() });
+        actions.updateNote(note.id, { ...updates, updatedAt: Date.now() });
         markSaved();
-      }, 300);
+      }, settings.autoSave ? 500 : 0);
     },
-    [note, actions, markSaved]
+    [note, actions, markSaved, settings.autoSave]
+  );
+
+  const handleTitleChange = useCallback(
+    (value: string) => {
+      setTitle(value);
+      saveNote({ title: value });
+    },
+    [saveNote]
   );
 
   const handleTitleBlur = useCallback(() => {
@@ -99,21 +99,14 @@ export function NoteDetail() {
   const handleContentChange = useCallback(
     (value: string) => {
       setContent(value);
-      if (!note) return;
-      setSaveStatus("saving");
-      clearTimeout(contentTimeoutRef.current ?? undefined);
-      contentTimeoutRef.current = setTimeout(() => {
-        actions.updateNote(note.id, {
-          content: value,
-          wordCount: wordCount(value),
-          charCount: value.length,
-          readingTime: readingTime(value),
-          updatedAt: Date.now(),
-        });
-        markSaved();
-      }, 500);
+      saveNote({
+        content: value,
+        wordCount: wordCount(value),
+        charCount: value.length,
+        readingTime: readingTime(value),
+      });
     },
-    [note, actions, markSaved]
+    [saveNote]
   );
 
   const addTag = useCallback(
@@ -151,17 +144,17 @@ export function NoteDetail() {
 
   const handleTogglePin = useCallback(() => {
     if (!note) return;
-    actions.updateNote(note.id, { pinned: !note.pinned, updatedAt: Date.now() });
+    actions.togglePin(note.id);
   }, [note, actions]);
 
   const handleToggleFavorite = useCallback(() => {
     if (!note) return;
-    actions.updateNote(note.id, { favorite: !note.favorite, updatedAt: Date.now() });
+    actions.toggleFavorite(note.id);
   }, [note, actions]);
 
   const handleDelete = useCallback(() => {
     if (!note) return;
-    actions.updateNote(note.id, { status: "trashed", trashedAt: Date.now() });
+    actions.deleteNote(note.id);
     actions.navigate("notes");
   }, [note, actions]);
 
@@ -169,6 +162,12 @@ export function NoteDetail() {
     if (!note) return;
     actions.duplicateNote(note.id);
     setMenuOpen(false);
+  }, [note, actions]);
+
+  const handleArchive = useCallback(() => {
+    if (!note) return;
+    actions.archiveNote(note.id);
+    actions.navigate("notes");
   }, [note, actions]);
 
   if (!note) {
@@ -230,14 +229,7 @@ export function NoteDetail() {
                 onClick={() => setMenuOpen(false)}
               >
                 <MenuButton icon={<Copy className="size-3.5" />} label="Duplicate" onClick={handleDuplicate} />
-                <MenuButton
-                  icon={<Archive className="size-3.5" />}
-                  label="Archive"
-                  onClick={() => {
-                    actions.updateNote(note.id, { status: "archived", archivedAt: Date.now() });
-                    actions.navigate("notes");
-                  }}
-                />
+                <MenuButton icon={<Archive className="size-3.5" />} label="Archive" onClick={handleArchive} />
               </div>
             )}
           </div>
@@ -317,16 +309,7 @@ export function NoteDetail() {
           </div>
 
           <div className="border-t border-border pt-4">
-            {useRichEditor ? (
-              <RichEditorContent content={content} onChange={handleContentChange} />
-            ) : (
-              <Textarea
-                value={content}
-                onChange={(e) => handleContentChange(e.target.value)}
-                placeholder="Start writing..."
-                className="min-h-[400px] resize-none border-0 p-0 shadow-none text-base leading-relaxed focus-visible:ring-0"
-              />
-            )}
+            <RichEditor initialContent={content} onUpdate={handleContentChange} />
           </div>
         </div>
       </div>
@@ -351,22 +334,5 @@ function MenuButton({
       {icon}
       {label}
     </button>
-  );
-}
-
-function RichEditorContent({
-  content,
-  onChange,
-}: {
-  content: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <Textarea
-      value={content}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder="Start writing..."
-      className="min-h-[400px] resize-none border-0 p-0 shadow-none text-base leading-relaxed focus-visible:ring-0"
-    />
   );
 }

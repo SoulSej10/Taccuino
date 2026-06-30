@@ -3,6 +3,7 @@ import { Moon, Sun, Monitor, Type, Download, Upload, RotateCcw, Save } from "luc
 import { useAppState, useAppActions } from "@/stores/appStore";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import * as api from "@/lib/api";
 import type { ThemeMode, AccentColor, FontFamily, LayoutDensity, EditorWidth } from "@/types";
 
 const ACCENT_COLORS: { name: AccentColor; color: string; ring: string }[] = [
@@ -45,8 +46,7 @@ export function SettingsPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
-  const [importStatus] = useState<string | null>(null);
-  // importStatus is kept for future UI feedback; value is set via addToast for now
+  const [, setImporting] = useState(false);
 
   const updateSettings = useCallback(
     (updates: Partial<typeof settings>) => {
@@ -81,21 +81,38 @@ export function SettingsPage() {
   }, [notes]);
 
   const handleImportJson = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
+      setImporting(true);
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         try {
           const imported = JSON.parse(event.target?.result as string);
-          if (Array.isArray(imported)) {
-            actions.setNotes(imported);
-            actions.addToast(`Imported ${imported.length} notes successfully`, "success");
-          } else {
+          if (!Array.isArray(imported)) {
             actions.addToast("Invalid format: expected an array of notes", "error");
+            return;
           }
+          let success = 0;
+          for (const note of imported) {
+            try {
+              await api.createNote({
+                title: note.title || "Untitled",
+                content: note.content || "",
+                tags: note.tags || [],
+                notebookId: note.notebookId || undefined,
+              });
+              success++;
+            } catch {
+              /* skip individual failures */
+            }
+          }
+          actions.addToast(`Imported ${success} of ${imported.length} notes`, "success");
+          await actions.loadInitialData();
         } catch {
           actions.addToast("Failed to parse JSON file", "error");
+        } finally {
+          setImporting(false);
         }
       };
       reader.readAsText(file);
@@ -104,14 +121,16 @@ export function SettingsPage() {
     [actions]
   );
 
-  const handleBackup = useCallback(() => {
+  const handleBackup = useCallback(async () => {
     try {
-      const raw = localStorage.getItem("taccuino-state");
-      if (!raw) {
-        actions.addToast("No data to backup", "error");
-        return;
-      }
-      const blob = new Blob([raw], { type: "application/json" });
+      const allNotes = await api.getNotes({ status: "active" });
+      const archivedNotes = await api.getNotes({ status: "archived" });
+      const trashedNotes = await api.getNotes({ status: "trashed" });
+      const backup = {
+        notes: [...allNotes.data, ...archivedNotes.data, ...trashedNotes.data],
+        exportedAt: new Date().toISOString(),
+      };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -129,12 +148,30 @@ export function SettingsPage() {
       const file = e.target.files?.[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         try {
           const data = JSON.parse(event.target?.result as string);
-          localStorage.setItem("taccuino-state", JSON.stringify(data));
-          actions.addToast("Restore complete. Refreshing...", "success");
-          setTimeout(() => window.location.reload(), 1000);
+          const importedNotes = data.notes || (Array.isArray(data) ? data : []);
+          if (!Array.isArray(importedNotes)) {
+            actions.addToast("Invalid backup format", "error");
+            return;
+          }
+          let success = 0;
+          for (const note of importedNotes) {
+            try {
+              await api.createNote({
+                title: note.title || "Untitled",
+                content: note.content || "",
+                tags: note.tags || [],
+                notebookId: note.notebookId || undefined,
+              });
+              success++;
+            } catch {
+              /* skip */
+            }
+          }
+          actions.addToast(`Restored ${success} of ${importedNotes.length} notes`, "success");
+          await actions.loadInitialData();
         } catch {
           actions.addToast("Failed to restore backup", "error");
         }
@@ -308,13 +345,6 @@ export function SettingsPage() {
         />
 
         <ToggleSetting
-          label="Show Line Numbers"
-          description="Display line numbers in the code editor"
-          checked={settings.showLineNumbers}
-          onChange={(checked) => updateSettings({ showLineNumbers: checked })}
-        />
-
-        <ToggleSetting
           label="Spell Check"
           description="Enable spell checking in the editor"
           checked={settings.spellCheck}
@@ -388,10 +418,6 @@ export function SettingsPage() {
             className="hidden"
           />
         </div>
-
-        {importStatus && (
-          <p className="text-sm text-muted-foreground">{importStatus}</p>
-        )}
       </section>
 
       <section className="space-y-4">
