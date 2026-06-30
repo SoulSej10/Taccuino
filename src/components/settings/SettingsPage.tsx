@@ -22,6 +22,7 @@ const FONT_FAMILIES: { value: FontFamily; label: string; className: string }[] =
   { value: "mono", label: "Mono", className: "font-mono" },
   { value: "inter", label: "Inter", className: "" },
   { value: "jetbrains", label: "JetBrains Mono", className: "" },
+  { value: "poppins", label: "Poppins", className: "" },
 ];
 
 const LAYOUT_DENSITIES: { value: LayoutDensity; label: string }[] = [

@@ -3,13 +3,13 @@ import type { Note, Notebook, Tag, AppSettings } from "@/types";
 import * as api from "@/lib/api";
 
 const DEFAULT_SETTINGS: AppSettings = {
-  theme: "light",
+  theme: "dark",
   accentColor: "blue",
-  fontFamily: "system",
-  fontSize: 16,
+  fontFamily: "poppins",
+  fontSize: 18,
   editorWidth: "medium",
   sidebarWidth: 260,
-  layoutDensity: "comfortable",
+  layoutDensity: "compact",
   autoSave: true,
   autoSaveInterval: 3000,
   spellCheck: true,

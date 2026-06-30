@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap";
+@import "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Poppins:wght@300;400;500;600;700&display=swap";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -300,6 +300,19 @@
 
 .font-jetbrains {
   font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+
+.font-poppins {
+  font-family: "Poppins", system-ui, -apple-system, sans-serif;
+}
+
+select {
+  color-scheme: inherit;
+}
+
+select option {
+  background: var(--background);
+  color: var(--foreground);
 }
 
 .density-compact {

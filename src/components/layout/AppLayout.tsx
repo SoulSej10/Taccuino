@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { Workspace } from "@/components/layout/Workspace";
 import { StatusBar } from "@/components/layout/StatusBar";
+import { CommandPalette } from "@/components/search/CommandPalette";
 import { useAppState, useAppActions } from "@/stores/appStore";
 import { LoadingScreen } from "@/components/common/LoadingScreen";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
         settings.theme === "amoled" && "amoled",
         `accent-${settings.accentColor}`
       )}
+      style={{ fontSize: `${settings.fontSize}px` }}
     >
       <Sidebar />
       <div className="flex flex-1 flex-col min-w-0">
@@ -39,6 +41,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
         </main>
         <StatusBar />
       </div>
+      <CommandPalette />
     </div>
   );
 }
