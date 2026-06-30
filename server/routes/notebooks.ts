@@ -4,7 +4,7 @@ import prisma from "../prisma.js";
 const router = Router();
 const userId = "default-user-id";
 
-router.get("/", async (req, res, next) => {
+router.get("/", async (_req, res, next) => {
   try {
     const notebooks = await prisma.notebook.findMany({
       where: { userId },
