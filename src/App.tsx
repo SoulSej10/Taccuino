@@ -1,7 +1,12 @@
-import Home from "./pages/Home";
+import { AppProvider } from "@/stores/appStore";
+import { AppLayout } from "@/components/layout/AppLayout";
 
 function App() {
-  return <Home />;
+  return (
+    <AppProvider>
+      <AppLayout />
+    </AppProvider>
+  );
 }
 
 export default App;
