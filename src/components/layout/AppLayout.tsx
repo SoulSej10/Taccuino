@@ -1,14 +1,24 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { Workspace } from "@/components/layout/Workspace";
 import { StatusBar } from "@/components/layout/StatusBar";
-import { useAppState } from "@/stores/appStore";
+import { useAppState, useAppActions } from "@/stores/appStore";
+import { LoadingScreen } from "@/components/common/LoadingScreen";
 import { cn } from "@/lib/utils";
 
 export function AppLayout({ children }: { children?: ReactNode }) {
   const { state } = useAppState();
+  const { loadInitialData } = useAppActions();
   const { settings } = state;
+
+  useEffect(() => {
+    loadInitialData();
+  }, [loadInitialData]);
+
+  if (!state.loaded) {
+    return <LoadingScreen />;
+  }
 
   return (
     <div

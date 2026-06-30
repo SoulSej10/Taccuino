@@ -96,7 +96,7 @@ function formatRelativeTime(timestamp: number): string {
 
 export function Dashboard() {
   const { state } = useAppState();
-  const { addNote, addNotebook, addTag, navigate, openNote, addToast } = useAppActions();
+  const { addNote, addNotebook, addTag, navigate, openNote } = useAppActions();
   const [quickInput, setQuickInput] = useState("");
 
   const { notes, notebooks, tags } = state;
@@ -155,83 +155,24 @@ export function Dashboard() {
         const firstLine = content.split("\n")[0];
         const title = firstLine.length > 60 ? firstLine.slice(0, 60) + "..." : firstLine;
 
-        addNote({
-          id: crypto.randomUUID(),
-          title,
-          content,
-          tags: [],
-          notebookId: null,
-          pinned: false,
-          favorite: false,
-          status: "active",
-          category: null,
-          color: null,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          trashedAt: null,
-          archivedAt: null,
-          wordCount: content.split(/\s+/).filter(Boolean).length,
-          charCount: content.length,
-          readingTime: Math.max(1, Math.ceil(content.length / 200)),
-          version: 1,
-        });
-
-        addToast("Note created", "success");
+        addNote({ title, content });
         setQuickInput("");
       }
     },
-    [quickInput, addNote, addToast],
+    [quickInput, addNote],
   );
 
   const handleNewNote = useCallback(() => {
-    addNote({
-      id: crypto.randomUUID(),
-      title: "Untitled",
-      content: "",
-      tags: [],
-      notebookId: null,
-      pinned: false,
-      favorite: false,
-      status: "active",
-      category: null,
-      color: null,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      trashedAt: null,
-      archivedAt: null,
-      wordCount: 0,
-      charCount: 0,
-      readingTime: 0,
-      version: 1,
-    });
-    addToast("New note created", "success");
-  }, [addNote, addToast]);
+    addNote({ title: "Untitled", content: "" });
+  }, [addNote]);
 
   const handleNewNotebook = useCallback(() => {
-    addNotebook({
-      id: crypto.randomUUID(),
-      name: "New Notebook",
-      description: "",
-      parentId: null,
-      icon: "📓",
-      color: "#3b82f6",
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      noteCount: 0,
-    });
-    addToast("New notebook created", "success");
-  }, [addNotebook, addToast]);
+    addNotebook({ name: "New Notebook", description: "", icon: "📓", color: "#3b82f6" });
+  }, [addNotebook]);
 
   const handleNewTag = useCallback(() => {
-    addTag({
-      id: crypto.randomUUID(),
-      name: "new-tag",
-      color: "#6366f1",
-      parentId: null,
-      noteCount: 0,
-    });
-    addToast("New tag created", "success");
-  }, [addTag, addToast]);
+    addTag({ name: "new-tag", color: "#6366f1" });
+  }, [addTag]);
 
   if (!hasNotes) {
     return (

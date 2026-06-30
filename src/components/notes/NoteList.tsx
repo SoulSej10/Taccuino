@@ -86,24 +86,14 @@ export function NoteList(props: {
           actions.updateNote(note.id, { status: "archived", archivedAt: Date.now() });
           break;
         case "pin":
-          actions.updateNote(note.id, { pinned: !note.pinned });
+          actions.togglePin(note.id);
           break;
         case "favorite":
-          actions.updateNote(note.id, { favorite: !note.favorite });
+          actions.toggleFavorite(note.id);
           break;
-        case "duplicate": {
-          const now = Date.now();
-          actions.addNote({
-            ...note,
-            id: crypto.randomUUID(),
-            title: `${note.title} (Copy)`,
-            createdAt: now,
-            updatedAt: now,
-            pinned: false,
-            favorite: false,
-          });
+        case "duplicate":
+          actions.duplicateNote(note.id);
           break;
-        }
       }
     },
     [actions]

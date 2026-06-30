@@ -19,10 +19,6 @@ type ResultGroup = {
   type: "note" | "command";
 };
 
-function generateId(): string {
-  return crypto.randomUUID();
-}
-
 export function CommandPalette() {
   const { state } = useAppState();
   const actions = useAppActions();
@@ -80,30 +76,9 @@ export function CommandPalette() {
         description: "Create a blank note",
         icon: <Plus className="size-4" />,
         shortcut: "N",
-        action: () => {
-          const id = generateId();
-          const now = Date.now();
-          actions.addNote({
-            id,
-            title: "Untitled",
-            content: "",
-            tags: [],
-            notebookId: null,
-            pinned: false,
-            favorite: false,
-            status: "active",
-            category: null,
-            color: null,
-            createdAt: now,
-            updatedAt: now,
-            trashedAt: null,
-            archivedAt: null,
-            wordCount: 0,
-            charCount: 0,
-            readingTime: 0,
-            version: 1,
-          });
-          actions.openNote(id);
+        action: async () => {
+          const note = await actions.addNote({ title: "Untitled", content: "" });
+          if (note) actions.openNote(note.id);
           close();
         },
       },
@@ -114,18 +89,7 @@ export function CommandPalette() {
         icon: <Notebook className="size-4" />,
         shortcut: "B",
         action: () => {
-          const id = generateId();
-          actions.addNotebook({
-            id,
-            name: "New Notebook",
-            description: "",
-            parentId: null,
-            icon: "📓",
-            color: "#3b82f6",
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            noteCount: 0,
-          });
+          actions.addNotebook({ name: "New Notebook", icon: "📓", color: "#3b82f6" });
           close();
         },
       },

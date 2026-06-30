@@ -1,5 +1,6 @@
 import { createContext, useContext, useReducer, useCallback, type ReactNode, type Dispatch } from "react";
 import type { Note, Notebook, Tag, AppSettings } from "@/types";
+import * as api from "@/lib/api";
 
 const DEFAULT_SETTINGS: AppSettings = {
   theme: "light",
@@ -34,6 +35,8 @@ type AppState = {
   commandPaletteOpen: boolean;
   searchQuery: string;
   toasts: { id: string; message: string; type: "success" | "error" | "info" }[];
+  loading: boolean;
+  loaded: boolean;
 };
 
 type Action =
@@ -60,7 +63,9 @@ type Action =
   | { type: "SET_COMMAND_PALETTE_OPEN"; open: boolean }
   | { type: "SET_SEARCH_QUERY"; query: string }
   | { type: "ADD_TOAST"; toast: { id: string; message: string; type: "success" | "error" | "info" } }
-  | { type: "REMOVE_TOAST"; id: string };
+  | { type: "REMOVE_TOAST"; id: string }
+  | { type: "SET_LOADING"; loading: boolean }
+  | { type: "SET_LOADED"; loaded: boolean };
 
 function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -112,32 +117,19 @@ function appReducer(state: AppState, action: Action): AppState {
       return { ...state, toasts: [...state.toasts, action.toast] };
     case "REMOVE_TOAST":
       return { ...state, toasts: state.toasts.filter((t) => t.id !== action.id) };
+    case "SET_LOADING":
+      return { ...state, loading: action.loading };
+    case "SET_LOADED":
+      return { ...state, loaded: action.loaded };
     default:
       return state;
   }
 }
 
 function getInitialState(): AppState {
-  try {
-    const raw = localStorage.getItem("taccuino-state");
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return {
-        ...parsed,
-        commandPaletteOpen: false,
-        sidebarOpen: parsed.sidebarOpen ?? true,
-        toasts: [],
-        searchQuery: "",
-      };
-    }
-  } catch {
-    /* ignore */
-  }
   return {
     notes: [],
-    notebooks: [
-      { id: "default", name: "Personal", description: "Your personal notes", parentId: null, icon: "📓", color: "#3b82f6", createdAt: Date.now(), updatedAt: Date.now(), noteCount: 0 },
-    ],
+    notebooks: [],
     tags: [],
     settings: DEFAULT_SETTINGS,
     activeView: "dashboard",
@@ -149,6 +141,8 @@ function getInitialState(): AppState {
     commandPaletteOpen: false,
     searchQuery: "",
     toasts: [],
+    loading: false,
+    loaded: false,
   };
 }
 
@@ -169,20 +163,265 @@ export function useAppState() {
 export function useAppActions() {
   const { dispatch } = useAppState();
 
-  const addNote = useCallback((note: Note) => dispatch({ type: "ADD_NOTE", note }), [dispatch]);
-  const updateNote = useCallback((id: string, updates: Partial<Note>) => dispatch({ type: "UPDATE_NOTE", id, updates }), [dispatch]);
-  const deleteNote = useCallback((id: string) => dispatch({ type: "DELETE_NOTE", id }), [dispatch]);
+  const addToast = useCallback((message: string, type: "success" | "error" | "info" = "info") => {
+    const id = crypto.randomUUID();
+    dispatch({ type: "ADD_TOAST", toast: { id, message, type } });
+    setTimeout(() => dispatch({ type: "REMOVE_TOAST", id }), 3000);
+  }, [dispatch]);
+
+  const loadInitialData = useCallback(async () => {
+    dispatch({ type: "SET_LOADING", loading: true });
+    try {
+      const [notesRes, notebooks, tags, settings] = await Promise.all([
+        api.getNotes({ status: "active" }),
+        api.getNotebooks(),
+        api.getTags(),
+        api.getSettings(),
+      ]);
+      dispatch({ type: "SET_NOTES", notes: notesRes.data });
+      dispatch({ type: "SET_NOTEBOOKS", notebooks });
+      dispatch({ type: "SET_TAGS", tags });
+      dispatch({ type: "SET_SETTINGS", settings });
+    } catch {
+      addToast("Failed to load your data", "error");
+    } finally {
+      dispatch({ type: "SET_LOADING", loading: false });
+      dispatch({ type: "SET_LOADED", loaded: true });
+    }
+  }, [dispatch, addToast]);
+
+  const addNote = useCallback(
+    async (data: { title: string; content: string; notebookId?: string; tags?: string[]; color?: string }) => {
+      try {
+        const note = await api.createNote(data);
+        dispatch({ type: "ADD_NOTE", note });
+        addToast("Note created", "success");
+        return note;
+      } catch {
+        addToast("Failed to create note", "error");
+        return undefined;
+      }
+    },
+    [dispatch, addToast],
+  );
+
+  const updateNote = useCallback(
+    async (id: string, updates: Partial<Note>) => {
+      try {
+        const note = await api.updateNote(id, updates);
+        dispatch({ type: "UPDATE_NOTE", id, updates: note });
+      } catch {
+        addToast("Failed to update note", "error");
+      }
+    },
+    [dispatch, addToast],
+  );
+
+  const deleteNote = useCallback(
+    async (id: string) => {
+      try {
+        await api.deleteNote(id);
+        dispatch({ type: "DELETE_NOTE", id });
+        addToast("Note deleted", "success");
+      } catch {
+        addToast("Failed to delete note", "error");
+      }
+    },
+    [dispatch, addToast],
+  );
+
   const setNotes = useCallback((notes: Note[]) => dispatch({ type: "SET_NOTES", notes }), [dispatch]);
 
-  const addNotebook = useCallback((notebook: Notebook) => dispatch({ type: "ADD_NOTEBOOK", notebook }), [dispatch]);
-  const updateNotebook = useCallback((id: string, updates: Partial<Notebook>) => dispatch({ type: "UPDATE_NOTEBOOK", id, updates }), [dispatch]);
-  const deleteNotebook = useCallback((id: string) => dispatch({ type: "DELETE_NOTEBOOK", id }), [dispatch]);
+  const restoreNote = useCallback(
+    async (id: string) => {
+      try {
+        const note = await api.restoreNote(id);
+        dispatch({ type: "ADD_NOTE", note });
+        addToast("Note restored", "success");
+      } catch {
+        addToast("Failed to restore note", "error");
+      }
+    },
+    [dispatch, addToast],
+  );
 
-  const addTag = useCallback((tag: Tag) => dispatch({ type: "ADD_TAG", tag }), [dispatch]);
-  const updateTag = useCallback((id: string, updates: Partial<Tag>) => dispatch({ type: "UPDATE_TAG", id, updates }), [dispatch]);
-  const deleteTag = useCallback((id: string) => dispatch({ type: "DELETE_TAG", id }), [dispatch]);
+  const duplicateNote = useCallback(
+    async (id: string) => {
+      try {
+        const note = await api.duplicateNote(id);
+        dispatch({ type: "ADD_NOTE", note });
+        addToast("Note duplicated", "success");
+      } catch {
+        addToast("Failed to duplicate note", "error");
+      }
+    },
+    [dispatch, addToast],
+  );
 
-  const setSettings = useCallback((settings: Partial<AppSettings>) => dispatch({ type: "SET_SETTINGS", settings }), [dispatch]);
+  const togglePin = useCallback(
+    async (id: string) => {
+      try {
+        const note = await api.togglePinNote(id);
+        dispatch({ type: "UPDATE_NOTE", id, updates: note });
+      } catch {
+        addToast("Failed to toggle pin", "error");
+      }
+    },
+    [dispatch, addToast],
+  );
+
+  const toggleFavorite = useCallback(
+    async (id: string) => {
+      try {
+        const note = await api.toggleFavoriteNote(id);
+        dispatch({ type: "UPDATE_NOTE", id, updates: note });
+      } catch {
+        addToast("Failed to toggle favorite", "error");
+      }
+    },
+    [dispatch, addToast],
+  );
+
+  const archiveNoteAction = useCallback(
+    async (id: string) => {
+      try {
+        const note = await api.archiveNote(id);
+        dispatch({ type: "UPDATE_NOTE", id, updates: note });
+        addToast("Note archived", "success");
+      } catch {
+        addToast("Failed to archive note", "error");
+      }
+    },
+    [dispatch, addToast],
+  );
+
+  const moveNote = useCallback(
+    async (id: string, notebookId: string) => {
+      try {
+        const note = await api.moveNote(id, notebookId);
+        dispatch({ type: "UPDATE_NOTE", id, updates: note });
+        addToast("Note moved", "success");
+      } catch {
+        addToast("Failed to move note", "error");
+      }
+    },
+    [dispatch, addToast],
+  );
+
+  const bulkNoteAction = useCallback(
+    async (ids: string[], action: string) => {
+      try {
+        await api.bulkNoteAction(ids, action);
+        addToast(`Notes ${action} successfully`, "success");
+      } catch {
+        addToast(`Failed to ${action} notes`, "error");
+      }
+    },
+    [addToast],
+  );
+
+  const addNotebook = useCallback(
+    async (data: { name: string; description?: string; icon?: string; color?: string; parentId?: string }) => {
+      try {
+        const notebook = await api.createNotebook(data);
+        dispatch({ type: "ADD_NOTEBOOK", notebook });
+        addToast("Notebook created", "success");
+      } catch {
+        addToast("Failed to create notebook", "error");
+      }
+    },
+    [dispatch, addToast],
+  );
+
+  const updateNotebook = useCallback(
+    async (id: string, data: Partial<Notebook>) => {
+      try {
+        const notebook = await api.updateNotebook(id, data);
+        dispatch({ type: "UPDATE_NOTEBOOK", id, updates: notebook });
+        addToast("Notebook updated", "success");
+      } catch {
+        addToast("Failed to update notebook", "error");
+      }
+    },
+    [dispatch, addToast],
+  );
+
+  const deleteNotebook = useCallback(
+    async (id: string) => {
+      try {
+        await api.deleteNotebook(id);
+        dispatch({ type: "DELETE_NOTEBOOK", id });
+        addToast("Notebook deleted", "success");
+      } catch {
+        addToast("Failed to delete notebook", "error");
+      }
+    },
+    [dispatch, addToast],
+  );
+
+  const addTag = useCallback(
+    async (data: { name: string; color?: string; parentId?: string }) => {
+      try {
+        const tag = await api.createTag(data);
+        dispatch({ type: "ADD_TAG", tag });
+        addToast("Tag created", "success");
+      } catch {
+        addToast("Failed to create tag", "error");
+      }
+    },
+    [dispatch, addToast],
+  );
+
+  const updateTag = useCallback(
+    async (id: string, data: Partial<Tag>) => {
+      try {
+        const tag = await api.updateTag(id, data);
+        dispatch({ type: "UPDATE_TAG", id, updates: tag });
+        addToast("Tag updated", "success");
+      } catch {
+        addToast("Failed to update tag", "error");
+      }
+    },
+    [dispatch, addToast],
+  );
+
+  const deleteTag = useCallback(
+    async (id: string) => {
+      try {
+        await api.deleteTag(id);
+        dispatch({ type: "DELETE_TAG", id });
+        addToast("Tag deleted", "success");
+      } catch {
+        addToast("Failed to delete tag", "error");
+      }
+    },
+    [dispatch, addToast],
+  );
+
+  const setSettings = useCallback(
+    async (data: Partial<AppSettings>) => {
+      try {
+        const settings = await api.updateSettings(data);
+        dispatch({ type: "SET_SETTINGS", settings });
+        addToast("Settings saved", "success");
+      } catch {
+        addToast("Failed to save settings", "error");
+      }
+    },
+    [dispatch, addToast],
+  );
+
+  const search = useCallback(
+    async (q: string) => {
+      try {
+        return await api.search(q);
+      } catch {
+        addToast("Search failed", "error");
+        return { notes: [], notebooks: [], tags: [] };
+      }
+    },
+    [addToast],
+  );
 
   const navigate = useCallback((view: ViewType) => {
     dispatch({ type: "SET_ACTIVE_VIEW", view });
@@ -197,18 +436,31 @@ export function useAppActions() {
   const toggleSidebar = useCallback(() => dispatch({ type: "TOGGLE_SIDEBAR" }), [dispatch]);
   const toggleCommandPalette = useCallback(() => dispatch({ type: "TOGGLE_COMMAND_PALETTE" }), [dispatch]);
 
-  const addToast = useCallback((message: string, type: "success" | "error" | "info" = "info") => {
-    const id = crypto.randomUUID();
-    dispatch({ type: "ADD_TOAST", toast: { id, message, type } });
-    setTimeout(() => dispatch({ type: "REMOVE_TOAST", id }), 3000);
-  }, [dispatch]);
-
   return {
-    addNote, updateNote, deleteNote, setNotes,
-    addNotebook, updateNotebook, deleteNotebook,
-    addTag, updateTag, deleteTag,
+    loadInitialData,
+    addNote,
+    updateNote,
+    deleteNote,
+    setNotes,
+    restoreNote,
+    duplicateNote,
+    togglePin,
+    toggleFavorite,
+    archiveNote: archiveNoteAction,
+    moveNote,
+    bulkNoteAction,
+    addNotebook,
+    updateNotebook,
+    deleteNotebook,
+    addTag,
+    updateTag,
+    deleteTag,
     setSettings,
-    navigate, openNote, toggleSidebar, toggleCommandPalette,
+    search,
+    navigate,
+    openNote,
+    toggleSidebar,
+    toggleCommandPalette,
     addToast,
   };
 }

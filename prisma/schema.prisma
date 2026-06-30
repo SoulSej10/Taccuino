@@ -1,0 +1,221 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String?
+  profile   Profile?
+  notes     Note[]
+  notebooks Notebook[]
+  tags      Tag[]
+  settings  Settings?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Profile {
+  id        String  @id @default(cuid())
+  userId    String  @unique
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avatarUrl String?
+  bio       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Notebook {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  icon        String   @default("📓")
+  color       String   @default("#3b82f6")
+  parentId    String?
+  parent      Notebook?  @relation("NotebookTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Notebook[] @relation("NotebookTree")
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notes       Note[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([parentId])
+}
+
+model Tag {
+  id        String    @id @default(cuid())
+  name      String
+  color     String    @default("#3b82f6")
+  parentId  String?
+  parent    Tag?      @relation("TagTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Tag[]     @relation("TagTree")
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notes     NoteTag[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([name, userId])
+  @@index([userId])
+  @@index([parentId])
+}
+
+model Note {
+  id          String     @id @default(cuid())
+  title       String     @default("Untitled")
+  content     String     @default("")
+  pinned      Boolean    @default(false)
+  favorite    Boolean    @default(false)
+  status      String     @default("active") // active | archived | trashed
+  color       String?
+  category    String?
+  notebookId  String?
+  notebook    Notebook?  @relation(fields: [notebookId], references: [id], onDelete: SetNull)
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags        NoteTag[]
+  versions    NoteVersion[]
+  reminders   Reminder[]
+  tasks       Task[]
+  attachments Attachment[]
+  wordCount   Int        @default(0)
+  charCount   Int        @default(0)
+  readingTime Int        @default(1)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  trashedAt   DateTime?
+  archivedAt  DateTime?
+
+  @@index([userId])
+  @@index([notebookId])
+  @@index([status])
+  @@index([pinned])
+  @@index([favorite])
+  @@index([updatedAt])
+  @@index([createdAt])
+  @@index([title], type: BTree)
+}
+
+model NoteTag {
+  noteId String
+  note   Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  tagId  String
+  tag    Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([noteId, tagId])
+  @@index([tagId])
+}
+
+model NoteVersion {
+  id        String   @id @default(cuid())
+  noteId    String
+  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  title     String
+  content   String
+  wordCount Int      @default(0)
+  charCount Int      @default(0)
+  editor    String   @default("unknown")
+  createdAt DateTime @default(now())
+
+  @@index([noteId, createdAt])
+}
+
+model Reminder {
+  id        String    @id @default(cuid())
+  noteId    String
+  note      Note      @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  title     String
+  dueDate   DateTime
+  completed Boolean   @default(false)
+  priority  String    @default("medium") // low | medium | high
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([noteId])
+  @@index([dueDate])
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  noteId      String
+  note        Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  content     String
+  completed   Boolean  @default(false)
+  priority    String   @default("medium")
+  dueDate     DateTime?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([noteId])
+}
+
+model Attachment {
+  id          String   @id @default(cuid())
+  noteId      String
+  note        Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  fileName    String
+  fileType    String   // image/png, application/pdf, video/mp4, audio/mpeg, etc.
+  fileSize    Int      @default(0)
+  url         String   // storage URL (S3, R2, etc.)
+  thumbnailUrl String?
+  width       Int?
+  height      Int?
+  caption     String?
+  provider    String   @default("local") // local | s3 | r2 | gcs
+  createdAt   DateTime @default(now())
+
+  @@index([noteId])
+}
+
+model Settings {
+  id              String @id @default(cuid())
+  userId          String @unique
+  user            User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme           String @default("light")    // light | dark | amoled
+  accentColor     String @default("blue")
+  fontFamily      String @default("system")
+  fontSize        Int    @default(16)
+  editorWidth     String @default("medium")
+  sidebarWidth    Int    @default(260)
+  layoutDensity   String @default("comfortable")
+  autoSave        Boolean @default(true)
+  autoSaveInterval Int   @default(3000)
+  spellCheck      Boolean @default(true)
+  focusMode       Boolean @default(false)
+  showStatusBar   Boolean @default(true)
+  showLineNumbers Boolean @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String   // created | updated | deleted | restored | archived | trashed | favorited | pinned
+  entityType String // note | notebook | tag
+  entityId  String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Template {
+  id        String   @id @default(cuid())
+  name      String
+  content   String
+  category  String   @default("general")
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, category])
+}

@@ -16,7 +16,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAppState, useAppActions } from "@/stores/appStore";
 import { cn } from "@/lib/utils";
-import type { Note } from "@/types";
 
 const NAV_ITEMS = [
   { view: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard },
@@ -79,31 +78,10 @@ export function Sidebar() {
     }
   };
 
-  const handleNewNote = () => {
-    const id = crypto.randomUUID();
-    const now = Date.now();
-    const note: Note = {
-      id,
-      title: "Untitled",
-      content: "",
-      tags: [],
-      notebookId: null,
-      pinned: false,
-      favorite: false,
-      status: "active",
-      category: null,
-      color: null,
-      createdAt: now,
-      updatedAt: now,
-      trashedAt: null,
-      archivedAt: null,
-      wordCount: 0,
-      charCount: 0,
-      readingTime: 0,
-      version: 1,
-    };
-    addNote(note);
-    openNote(id);
+  const handleNewNote = async () => {
+    const note = await addNote({ title: "Untitled", content: "" });
+    if (!note) return;
+    openNote(note.id);
     if (window.innerWidth < 1024) {
       toggleSidebar();
     }
@@ -126,29 +104,11 @@ export function Sidebar() {
   };
 
   const handleAddNotebook = () => {
-    const id = crypto.randomUUID();
-    addNotebook({
-      id,
-      name: "New Notebook",
-      description: "",
-      parentId: null,
-      icon: "📓",
-      color: "#3b82f6",
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      noteCount: 0,
-    });
+    addNotebook({ name: "New Notebook", description: "", icon: "📓", color: "#3b82f6" });
   };
 
   const handleAddTag = () => {
-    const id = crypto.randomUUID();
-    addTag({
-      id,
-      name: "new-tag",
-      color: "#6366f1",
-      parentId: null,
-      noteCount: 0,
-    });
+    addTag({ name: "new-tag", color: "#6366f1" });
   };
 
   const getNoteCount = (notebookId: string) => {

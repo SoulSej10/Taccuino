@@ -167,16 +167,7 @@ export function NoteDetail() {
 
   const handleDuplicate = useCallback(() => {
     if (!note) return;
-    const now = Date.now();
-    actions.addNote({
-      ...note,
-      id: crypto.randomUUID(),
-      title: `${note.title} (Copy)`,
-      createdAt: now,
-      updatedAt: now,
-      pinned: false,
-      favorite: false,
-    });
+    actions.duplicateNote(note.id);
     setMenuOpen(false);
   }, [note, actions]);
 
