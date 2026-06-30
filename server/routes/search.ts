@@ -1,6 +1,13 @@
 import { Router } from "express";
 import prisma from "../prisma.js";
 
+function flattenTags(note: {
+  tags?: Array<{ tag: { name: string } }>;
+  [key: string]: unknown;
+}) {
+  return { ...note, tags: note.tags?.map((nt) => nt.tag.name) ?? [] };
+}
+
 const router = Router();
 const userId = "default-user-id";
 
@@ -38,7 +45,7 @@ router.get("/", async (req, res, next) => {
       }),
     ]);
 
-    res.json({ notes, notebooks, tags });
+    res.json({ notes: notes.map(flattenTags), notebooks, tags });
   } catch (err) {
     next(err);
   }

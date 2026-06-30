@@ -2,6 +2,13 @@ import { Router } from "express";
 import prisma from "../prisma.js";
 import type { Prisma } from "@prisma/client";
 
+function flattenTags(note: {
+  tags?: Array<{ tag: { name: string } }>;
+  [key: string]: unknown;
+}) {
+  return { ...note, tags: note.tags?.map((nt) => nt.tag.name) ?? [] };
+}
+
 const router = Router();
 const userId = "default-user-id";
 
@@ -103,7 +110,7 @@ router.get("/", async (req, res, next) => {
       prisma.note.count({ where }),
     ]);
 
-    res.json({ data, total, page: pageNum, limit: limitNum });
+    res.json({ data: data.map(flattenTags), total, page: pageNum, limit: limitNum });
   } catch (err) {
     next(err);
   }
@@ -154,7 +161,7 @@ router.post("/", async (req, res, next) => {
       include: { tags: { include: { tag: true } } },
     });
 
-    res.status(201).json(note);
+    res.status(201).json(flattenTags(note));
   } catch (err) {
     next(err);
   }
@@ -178,7 +185,7 @@ router.get("/:id", async (req, res, next) => {
       return;
     }
 
-    res.json(note);
+    res.json(flattenTags(note));
   } catch (err) {
     next(err);
   }
@@ -241,7 +248,7 @@ router.put("/:id", async (req, res, next) => {
       include: { tags: { include: { tag: true } } },
     });
 
-    res.json(note);
+    res.json(flattenTags(note));
   } catch (err) {
     next(err);
   }
@@ -286,7 +293,7 @@ router.post("/:id/restore", async (req, res, next) => {
       include: { tags: { include: { tag: true } } },
     });
 
-    res.json(note);
+    res.json(flattenTags(note));
   } catch (err) {
     next(err);
   }
@@ -353,7 +360,7 @@ router.post("/:id/archive", async (req, res, next) => {
       include: { tags: { include: { tag: true } } },
     });
 
-    res.json(note);
+    res.json(flattenTags(note));
   } catch (err) {
     next(err);
   }
@@ -376,7 +383,7 @@ router.post("/:id/pin", async (req, res, next) => {
       include: { tags: { include: { tag: true } } },
     });
 
-    res.json(note);
+    res.json(flattenTags(note));
   } catch (err) {
     next(err);
   }
@@ -399,7 +406,7 @@ router.post("/:id/favorite", async (req, res, next) => {
       include: { tags: { include: { tag: true } } },
     });
 
-    res.json(note);
+    res.json(flattenTags(note));
   } catch (err) {
     next(err);
   }
@@ -423,7 +430,7 @@ router.post("/:id/move", async (req, res, next) => {
       include: { tags: { include: { tag: true } } },
     });
 
-    res.json(note);
+    res.json(flattenTags(note));
   } catch (err) {
     next(err);
   }
@@ -520,7 +527,7 @@ router.post("/:id/versions/:versionId/restore", async (req, res, next) => {
       include: { tags: { include: { tag: true } } },
     });
 
-    res.json(note);
+    res.json(flattenTags(note));
   } catch (err) {
     next(err);
   }
